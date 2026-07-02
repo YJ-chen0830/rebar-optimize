@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>鋼筋算料最優化</title>
+<style>
+  :root{--navy:#0b1f3a;--navy2:#13284a;--gold:#c9a14a;--gold2:#e0bf6e;--bg:#f5f3ee;--ink:#1c2530;--line:#d8d2c2;}
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:"Noto Sans TC","Segoe UI",sans-serif;background:var(--bg);color:var(--ink);}
+  header{background:linear-gradient(135deg,var(--navy),var(--navy2));color:#f5f3ee;padding:28px 32px;}
+  header h1{margin:0;font-size:22px;}
+  header span{color:var(--gold2);font-size:13px;display:block;margin-top:4px;}
+  main{max-width:1100px;margin:0 auto;padding:28px 20px 60px;}
+  .grid{display:grid;grid-template-columns:420px 1fr;gap:24px;}
+  @media(max-width:860px){.grid{grid-template-columns:1fr;}}
+  .card{background:#fff;border:1px solid var(--line);border-radius:10px;padding:20px 22px;box-shadow:0 1px 3px rgba(0,0,0,.04);}
+  .card h2{font-size:15px;margin:0 0 14px;color:var(--navy);border-bottom:2px solid var(--gold);padding-bottom:8px;}
+  label{display:block;font-size:12.5px;color:#555;margin:10px 0 4px;}
+  input,select{width:100%;padding:8px 10px;border:1px solid #ccc;border-radius:6px;font-size:14px;background:#fafaf8;}
+  button{padding:9px 16px;border:none;border-radius:7px;background:var(--navy);color:#fff;font-size:14px;font-weight:600;cursor:pointer;}
+  button:hover{background:var(--navy2);}
+  button.add{background:var(--gold);color:var(--navy);margin-top:10px;width:100%;}
+  button.calc{margin-top:16px;width:100%;padding:11px;font-size:15px;}
+  table{width:100%;border-collapse:collapse;margin-top:6px;}
+  td,th{padding:6px 6px;border-bottom:1px solid #eee;font-size:13px;}
+  th{background:#f5f3ee;font-weight:600;color:var(--navy);font-size:12px;text-align:left;}
+  .note{font-size:12px;color:#888;margin-top:12px;line-height:1.7;}
+  .req-row{display:grid;grid-template-columns:1fr 1fr 40px;gap:6px;margin-bottom:6px;align-items:center;}
+  .req-row input{margin:0;}
+  .del{background:#eee;color:#555;border:none;border-radius:5px;padding:4px 8px;cursor:pointer;font-size:13px;}
+  .bar-vis{height:24px;border-radius:4px;background:#e8eef5;margin-bottom:4px;position:relative;overflow:hidden;}
+  .bar-seg{height:100%;position:absolute;display:flex;align-items:center;justify-content:center;font-size:10px;color:#fff;font-weight:700;}
+  .summary-box{background:#f5f3ee;border-radius:8px;padding:12px 16px;margin-bottom:14px;}
+  details.proc{margin-top:14px;border:1px solid var(--line);border-radius:8px;background:#fafaf8;}
+  details.proc summary{cursor:pointer;padding:10px 14px;font-weight:700;font-size:13px;color:var(--navy);user-select:none;}
+  details.proc pre{margin:0;padding:10px 16px 14px;font-family:"Courier New",monospace;font-size:11.5px;line-height:1.85;white-space:pre-wrap;color:#2c3e50;border-top:1px solid var(--line);}
+</style>
+</head>
+<body>
+<header>
+  <h1>鋼筋算料最優化 (Rebar Cutting Optimization)</h1>
+  <span>First Fit Decreasing 演算法 · 最小廢料 · 完整切料計算書</span>
+</header>
+<main>
+<div class="grid">
+  <div class="card">
+    <h2>設定</h2>
+    <label>原料長度 (m)</label>
+    <select id="stockLen">
+      <option value="6">6 m</option>
+      <option value="9">9 m</option>
+      <option value="12" selected>12 m</option>
+      <option value="15">15 m</option>
+    </select>
+    <label>鋸縫寬度 (mm)</label>
+    <input id="kerf" type="number" value="3" step="1">
+    <h2 style="margin-top:18px;">需求料表</h2>
+    <div style="font-size:12px;color:#888;margin-bottom:8px">長度(m) × 根數</div>
+    <div id="reqList"></div>
+    <button class="add" onclick="addRow()">＋ 新增需求</button>
+    <button class="calc" onclick="optimize()">開始最優化計算</button>
+    <div class="note">FFD 演算法：需求長度由大到小排列，依序塞入剩餘空間最小但足夠的鋼筋中。正式採購加計 3~5% 損耗餘量。</div>
+  </div>
+  <div class="card">
+    <h2>切料計畫</h2>
+    <div id="result"><p style="color:#888">尚未計算</p></div>
+    <details class="proc" id="proc-box" style="display:none">
+      <summary>📋 計算過程（供第三方檢核）</summary>
+      <pre id="proc-text"></pre>
+    </details>
+  </div>
+</div>
+</main>
+<script>
+const COLORS=['#0b1f3a','#c9a14a','#2e6da4','#c0392b','#27ae60','#8e44ad','#e67e22','#16a085'];
+let rowId=0;
+function addRow(len='',qty=''){
+  const id=rowId++;
+  const d=document.createElement('div');
+  d.className='req-row';d.id='row-'+id;
+  d.innerHTML=`<input type="number" class="len" placeholder="長度 m" value="${len}" step="0.05" min="0.1">
+    <input type="number" class="qty" placeholder="根數" value="${qty}" step="1" min="1">
+    <button class="del" onclick="document.getElementById('row-${id}').remove()">✕</button>`;
+  document.getElementById('reqList').appendChild(d);
+}
+function getReqs(){
+  return Array.from(document.querySelectorAll('.req-row')).map(r=>({
+    l:parseFloat(r.querySelector('.len').value),
+    q:parseInt(r.querySelector('.qty').value)
+  })).filter(r=>r.l>0&&r.q>0);
+}
+function optimize(){
+  const stockLen=parseFloat(document.getElementById('stockLen').value);
+  const kerf=parseFloat(document.getElementById('kerf').value)/1000;
+  const reqs=getReqs();
+  if(!reqs.length){document.getElementById('result').innerHTML='<p style="color:#c0392b">請先新增需求</p>';return;}
+
+  let pieces=[];
+  reqs.forEach(r=>{for(let i=0;i<r.q;i++)pieces.push(r.l);});
+  pieces.sort((a,b)=>b-a);
+
+  const colorMap={};let ci=0;
+  const bars=[];
+  const log=[];
+
+  pieces.forEach((p,pi)=>{
+    if(!colorMap[p]){colorMap[p]=COLORS[ci%COLORS.length];ci++;}
+    let placed=false;
+    for(let bi=0;bi<bars.length;bi++){
+      const bar=bars[bi];
+      const need=p+(bar.cuts.length>0?kerf:0);
+      if(bar.remaining>=need-0.0001){
+        bar.remaining-=need;
+        bar.cuts.push({len:p,color:colorMap[p]});
+        log.push(`  片段${pi+1}（${p}m）→ 放入第 #${bi+1} 支，剩餘空間 ${bar.remaining.toFixed(3)} m`);
+        placed=true;break;
+      }
+    }
+    if(!placed){
+      bars.push({remaining:stockLen-p,cuts:[{len:p,color:colorMap[p]}]});
+      log.push(`  片段${pi+1}（${p}m）→ 開新第 #${bars.length} 支，剩餘空間 ${(stockLen-p).toFixed(3)} m`);
+    }
+  });
+
+  const totalPieces=pieces.length;
+  const totalBars=bars.length;
+  const totalCutLen=pieces.reduce((s,p)=>s+p,0);
+  const totalStock=totalBars*stockLen;
+  const totalKerf=bars.reduce((s,b)=>s+(b.cuts.length-1)*kerf,0);
+  const totalWaste=totalStock-totalCutLen-totalKerf;
+  const wasteRate=totalWaste/totalStock*100;
+
+  let html=`<div class="summary-box">
+    <strong>原料支數：${totalBars} 支</strong>（每支 ${stockLen}m）<br>
+    需求總長：${totalCutLen.toFixed(2)} m｜鋸縫損耗：${(totalKerf*1000).toFixed(0)} mm<br>
+    廢料：<strong>${totalWaste.toFixed(3)} m（${wasteRate.toFixed(1)}%）</strong>
+  </div>`;
+
+  html+='<table><tr><th>支</th><th>切割配置</th><th>廢料(m)</th></tr>';
+  bars.forEach((bar,i)=>{
+    const waste=bar.remaining;
+    let vis='<div class="bar-vis">';
+    let pos=0;
+    bar.cuts.forEach(cut=>{
+      const w=(cut.len/stockLen*100).toFixed(2);
+      vis+=`<div class="bar-seg" style="left:${pos}%;width:${w}%;background:${cut.color}">${cut.len}m</div>`;
+      pos+=parseFloat(w);
+    });
+    if(waste>0.001)vis+=`<div style="left:${pos}%;width:${(waste/stockLen*100).toFixed(2)}%;height:100%;position:absolute;background:#ddd"></div>`;
+    vis+='</div>';
+    html+=`<tr><td>#${i+1}</td><td>${vis}<span style="font-size:11px;color:#888">${bar.cuts.map(c=>c.len+'m').join(' + ')}</span></td><td>${waste.toFixed(3)}</td></tr>`;
+  });
+  html+='</table>';
+  document.getElementById('result').innerHTML=html;
+
+  // Process
+  let proc=`════════════════════════════════════════
+鋼筋算料最優化 計算過程
+演算法：First Fit Decreasing (FFD)
+════════════════════════════════════════
+
+【一、輸入參數】
+  原料長度 = ${stockLen} m
+  鋸縫寬度 = ${kerf*1000} mm = ${kerf} m
+
+【二、需求清單】
+  規格         根數    小計長度
+  ─────────────────────────────\n`;
+  reqs.forEach(r=>{
+    proc+=`  ${r.l} m      × ${r.q}     = ${(r.l*r.q).toFixed(2)} m\n`;
+  });
+  proc+=`  ─────────────────────────────
+  合計片段數 = ${totalPieces} 片，需求總長 = ${totalCutLen.toFixed(3)} m
+  理論最少原料 = ⌈${totalCutLen.toFixed(3)} / ${stockLen}⌉ = ${Math.ceil(totalCutLen/stockLen)} 支
+
+【三、FFD 演算法排序】
+  將所有片段由大到小排列：
+  ${pieces.map((p,i)=>`${i+1}.${p}m`).join('  ')}
+
+【四、逐片放置過程】
+${log.join('\n')}
+
+【五、各支鋼筋切料彙整】
+  支號  切割配置                          廢料(m)
+  ──────────────────────────────────────────\n`;
+  bars.forEach((bar,i)=>{
+    proc+=`  #${String(i+1).padEnd(4)} ${bar.cuts.map(c=>c.len+'m').join('+').padEnd(34)} ${bar.remaining.toFixed(4)}\n`;
+  });
+  proc+=`
+【六、統計結果】
+  使用原料支數 = ${totalBars} 支
+  原料總長     = ${totalBars} × ${stockLen} = ${totalStock.toFixed(1)} m
+  需求用料長   = ${totalCutLen.toFixed(3)} m
+  鋸縫損耗     = ${totalBars-1} 次開新料（各支內部鋸縫共 ${(totalKerf*1000).toFixed(0)} mm = ${totalKerf.toFixed(4)} m）
+  總廢料       = ${totalStock.toFixed(3)} - ${totalCutLen.toFixed(3)} - ${totalKerf.toFixed(4)} = ${totalWaste.toFixed(4)} m
+  廢料率       = ${totalWaste.toFixed(4)} / ${totalStock.toFixed(1)} × 100% = ${wasteRate.toFixed(2)}%
+
+  ※ FFD 為近似最優解，理論下界 = ${Math.ceil(totalCutLen/stockLen)} 支，實際用 ${totalBars} 支。
+  ※ 正式採購建議加計 3~5% 損耗餘量，即採購 ≥ ${Math.ceil(totalBars*1.05)} 支。`;
+
+  document.getElementById('proc-text').textContent=proc;
+  document.getElementById('proc-box').style.display='';
+}
+addRow(6.0,20);addRow(4.5,35);addRow(3.2,18);addRow(2.1,40);
+</script>
+</body>
+</html>
