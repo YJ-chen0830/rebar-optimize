@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>鋼筋算料最優化</title>
+<title>鋼筋算料最優化 | Rebar Cutting Optimization</title>
 <style>
   :root{--navy:#0b1f3a;--navy2:#13284a;--gold:#c9a14a;--gold2:#e0bf6e;--bg:#f5f3ee;--ink:#1c2530;--line:#d8d2c2;}
   *{box-sizing:border-box;}
@@ -12,26 +12,23 @@
   header h1{margin:0;font-size:22px;}
   header span{color:var(--gold2);font-size:13px;display:block;margin-top:4px;}
   main{max-width:1100px;margin:0 auto;padding:28px 20px 60px;}
-  .grid{display:grid;grid-template-columns:420px 1fr;gap:24px;}
-  @media(max-width:860px){.grid{grid-template-columns:1fr;}}
+  .grid{display:grid;grid-template-columns:340px 1fr;gap:24px;}
+  @media(max-width:820px){.grid{grid-template-columns:1fr;}}
   .card{background:#fff;border:1px solid var(--line);border-radius:10px;padding:20px 22px;box-shadow:0 1px 3px rgba(0,0,0,.04);}
   .card h2{font-size:15px;margin:0 0 14px;color:var(--navy);border-bottom:2px solid var(--gold);padding-bottom:8px;}
   label{display:block;font-size:12.5px;color:#555;margin:10px 0 4px;}
-  input,select{width:100%;padding:8px 10px;border:1px solid #ccc;border-radius:6px;font-size:14px;background:#fafaf8;}
-  button{padding:9px 16px;border:none;border-radius:7px;background:var(--navy);color:#fff;font-size:14px;font-weight:600;cursor:pointer;}
+  input,select,textarea{width:100%;padding:8px 10px;border:1px solid #ccc;border-radius:6px;font-size:13.5px;background:#fafaf8;}
+  textarea{font-family:"Courier New",monospace;resize:vertical;}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  button{margin-top:14px;width:100%;padding:11px;border:none;border-radius:7px;background:var(--navy);color:#fff;font-size:15px;font-weight:600;cursor:pointer;}
   button:hover{background:var(--navy2);}
-  button.add{background:var(--gold);color:var(--navy);margin-top:10px;width:100%;}
-  button.calc{margin-top:16px;width:100%;padding:11px;font-size:15px;}
-  table{width:100%;border-collapse:collapse;margin-top:6px;}
-  td,th{padding:6px 6px;border-bottom:1px solid #eee;font-size:13px;}
-  th{background:#f5f3ee;font-weight:600;color:var(--navy);font-size:12px;text-align:left;}
-  .note{font-size:12px;color:#888;margin-top:12px;line-height:1.7;}
-  .req-row{display:grid;grid-template-columns:1fr 1fr 40px;gap:6px;margin-bottom:6px;align-items:center;}
-  .req-row input{margin:0;}
-  .del{background:#eee;color:#555;border:none;border-radius:5px;padding:4px 8px;cursor:pointer;font-size:13px;}
-  .bar-vis{height:24px;border-radius:4px;background:#e8eef5;margin-bottom:4px;position:relative;overflow:hidden;}
-  .bar-seg{height:100%;position:absolute;display:flex;align-items:center;justify-content:center;font-size:10px;color:#fff;font-weight:700;}
-  .summary-box{background:#f5f3ee;border-radius:8px;padding:12px 16px;margin-bottom:14px;}
+  .note{font-size:12px;color:#888;margin-top:10px;line-height:1.7;}
+  .summary-box{background:#f0f4f8;border-radius:8px;padding:14px 16px;font-size:13px;line-height:2.1;margin-bottom:12px;}
+  .summary-box strong{color:var(--navy);}
+  .bar-row{background:#fff;border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin-bottom:8px;font-size:12.5px;}
+  .bar-title{font-weight:700;color:var(--navy);margin-bottom:6px;font-size:13px;}
+  .seg{display:inline-block;height:24px;line-height:24px;font-size:10.5px;text-align:center;border-radius:3px;vertical-align:middle;color:#fff;font-weight:700;margin-right:2px;}
+  .waste-seg{background:#ccc;color:#555;}
   details.proc{margin-top:14px;border:1px solid var(--line);border-radius:8px;background:#fafaf8;}
   details.proc summary{cursor:pointer;padding:10px 14px;font-weight:700;font-size:13px;color:var(--navy);user-select:none;}
   details.proc pre{margin:0;padding:10px 16px 14px;font-family:"Courier New",monospace;font-size:11.5px;line-height:1.85;white-space:pre-wrap;color:#2c3e50;border-top:1px solid var(--line);}
@@ -39,31 +36,37 @@
 </head>
 <body>
 <header>
-  <h1>鋼筋算料最優化 (Rebar Cutting Optimization)</h1>
-  <span>First Fit Decreasing 演算法 · 最小廢料 · 完整切料計算書</span>
+  <h1>鋼筋算料最優化（Rebar Cutting Optimization）</h1>
+  <span>FFD 最先適應遞減法（First Fit Decreasing）· 切割計畫視覺化 · 廢料率分析</span>
 </header>
 <main>
 <div class="grid">
   <div class="card">
-    <h2>設定</h2>
-    <label>原料長度 (m)</label>
-    <select id="stockLen">
-      <option value="6">6 m</option>
-      <option value="9">9 m</option>
-      <option value="12" selected>12 m</option>
-      <option value="15">15 m</option>
-    </select>
-    <label>鋸縫寬度 (mm)</label>
-    <input id="kerf" type="number" value="3" step="1">
-    <h2 style="margin-top:18px;">需求料表</h2>
-    <div style="font-size:12px;color:#888;margin-bottom:8px">長度(m) × 根數</div>
-    <div id="reqList"></div>
-    <button class="add" onclick="addRow()">＋ 新增需求</button>
-    <button class="calc" onclick="optimize()">開始最優化計算</button>
-    <div class="note">FFD 演算法：需求長度由大到小排列，依序塞入剩餘空間最小但足夠的鋼筋中。正式採購加計 3~5% 損耗餘量。</div>
+    <h2>輸入設定</h2>
+    <label>原料長度（定尺，m）</label>
+    <input id="stock" type="number" value="12" step="0.5" min="1">
+    <label>切割鋸縫損耗 kerf (mm)</label>
+    <input id="kerf" type="number" value="3" step="1" min="0">
+
+    <label style="margin-top:14px">需求料段（長度 m × 數量，一行一種）</label>
+    <div class="note" style="margin:0 0 6px">格式：長度 數量，例如「3.5 8」</div>
+    <textarea id="pieces" rows="8">6.0 4
+4.5 6
+3.2 10
+2.8 5
+1.5 12
+0.9 8</textarea>
+
+    <button onclick="optimize()">開始最優化計算</button>
+    <div class="note">
+      演算法：FFD (First Fit Decreasing)。<br>
+      步驟：① 所有料段依長度由大到小排序 → ② 逐一放入第一根能容納的原料 → ③ 無法放入則開新根原料。<br>
+      此為近似最優解；理論最小根數下界 = ⌈總需求長度 / 原料長度⌉。
+    </div>
   </div>
+
   <div class="card">
-    <h2>切料計畫</h2>
+    <h2>最優化結果</h2>
     <div id="result"><p style="color:#888">尚未計算</p></div>
     <details class="proc" id="proc-box" style="display:none">
       <summary>📋 計算過程（供第三方檢核）</summary>
@@ -72,137 +75,184 @@
   </div>
 </div>
 </main>
+
 <script>
-const COLORS=['#0b1f3a','#c9a14a','#2e6da4','#c0392b','#27ae60','#8e44ad','#e67e22','#16a085'];
-let rowId=0;
-function addRow(len='',qty=''){
-  const id=rowId++;
-  const d=document.createElement('div');
-  d.className='req-row';d.id='row-'+id;
-  d.innerHTML=`<input type="number" class="len" placeholder="長度 m" value="${len}" step="0.05" min="0.1">
-    <input type="number" class="qty" placeholder="根數" value="${qty}" step="1" min="1">
-    <button class="del" onclick="document.getElementById('row-${id}').remove()">✕</button>`;
-  document.getElementById('reqList').appendChild(d);
-}
-function getReqs(){
-  return Array.from(document.querySelectorAll('.req-row')).map(r=>({
-    l:parseFloat(r.querySelector('.len').value),
-    q:parseInt(r.querySelector('.qty').value)
-  })).filter(r=>r.l>0&&r.q>0);
-}
+var COLORS = ['#1565c0','#2e7d32','#c62828','#6a1aaa','#e65100','#00695c','#4527a0','#ad1457','#37474f','#558b2f'];
+
 function optimize(){
-  const stockLen=parseFloat(document.getElementById('stockLen').value);
-  const kerf=parseFloat(document.getElementById('kerf').value)/1000;
-  const reqs=getReqs();
-  if(!reqs.length){document.getElementById('result').innerHTML='<p style="color:#c0392b">請先新增需求</p>';return;}
+  var stockLen = parseFloat(document.getElementById('stock').value);
+  var kerfM    = parseFloat(document.getElementById('kerf').value)/1000; // mm→m
+  var lines    = document.getElementById('pieces').value.trim().split('\n');
 
-  let pieces=[];
-  reqs.forEach(r=>{for(let i=0;i<r.q;i++)pieces.push(r.l);});
-  pieces.sort((a,b)=>b-a);
+  // Parse pieces
+  var pieces = [];
+  var parseErrors = [];
+  for(var i=0;i<lines.length;i++){
+    var line = lines[i].trim();
+    if(!line) continue;
+    var parts = line.split(/\s+/);
+    var len = parseFloat(parts[0]);
+    var qty = parseInt(parts[1]||'1');
+    if(isNaN(len)||len<=0){ parseErrors.push('第'+(i+1)+'行格式錯誤'); continue; }
+    if(len>stockLen){ parseErrors.push('料段 '+len+' m 超過原料長度 '+stockLen+' m'); continue; }
+    pieces.push({len:len, qty:qty, id:i, label:(i+1)+'號('+len+'m)'});
+  }
+  if(parseErrors.length){
+    document.getElementById('result').innerHTML='<p style="color:#c62828">輸入錯誤：'+parseErrors.join('；')+'</p>';
+    return;
+  }
 
-  const colorMap={};let ci=0;
-  const bars=[];
-  const log=[];
+  // Expand into individual pieces with type index
+  var expanded = [];
+  var typeList = [];
+  for(var t=0;t<pieces.length;t++){
+    typeList.push(pieces[t]);
+    for(var q=0;q<pieces[t].qty;q++){
+      expanded.push({len:pieces[t].len, type:t});
+    }
+  }
 
-  pieces.forEach((p,pi)=>{
-    if(!colorMap[p]){colorMap[p]=COLORS[ci%COLORS.length];ci++;}
-    let placed=false;
-    for(let bi=0;bi<bars.length;bi++){
-      const bar=bars[bi];
-      const need=p+(bar.cuts.length>0?kerf:0);
-      if(bar.remaining>=need-0.0001){
-        bar.remaining-=need;
-        bar.cuts.push({len:p,color:colorMap[p]});
-        log.push(`  片段${pi+1}（${p}m）→ 放入第 #${bi+1} 支，剩餘空間 ${bar.remaining.toFixed(3)} m`);
-        placed=true;break;
+  // Sort descending
+  var sorted = expanded.slice().sort(function(a,b){ return b.len-a.len; });
+
+  // FFD bin packing
+  var bars = []; // each bar: {remaining, cuts:[{len,type}]}
+  var placementLog = [];
+
+  for(var i=0;i<sorted.length;i++){
+    var piece = sorted[i];
+    var placed = false;
+    for(var b=0;b<bars.length;b++){
+      var needLen = piece.len + (bars[b].cuts.length>0 ? kerfM : 0);
+      if(bars[b].remaining >= needLen){
+        bars[b].remaining -= needLen;
+        bars[b].cuts.push({len:piece.len, type:piece.type});
+        placementLog.push('  料段 #'+(i+1)+' ('+piece.len.toFixed(3)+'m, 類型'+typeList[piece.type].label+') → 第 '+(b+1)+' 根，餘料 '+bars[b].remaining.toFixed(4)+' m');
+        placed = true;
+        break;
       }
     }
     if(!placed){
-      bars.push({remaining:stockLen-p,cuts:[{len:p,color:colorMap[p]}]});
-      log.push(`  片段${pi+1}（${p}m）→ 開新第 #${bars.length} 支，剩餘空間 ${(stockLen-p).toFixed(3)} m`);
+      var newBar = {remaining: stockLen - piece.len, cuts:[{len:piece.len, type:piece.type}]};
+      bars.push(newBar);
+      placementLog.push('  料段 #'+(i+1)+' ('+piece.len.toFixed(3)+'m, 類型'+typeList[piece.type].label+') → 新開第 '+bars.length+' 根，餘料 '+newBar.remaining.toFixed(4)+' m');
     }
-  });
+  }
 
-  const totalPieces=pieces.length;
-  const totalBars=bars.length;
-  const totalCutLen=pieces.reduce((s,p)=>s+p,0);
-  const totalStock=totalBars*stockLen;
-  const totalKerf=bars.reduce((s,b)=>s+(b.cuts.length-1)*kerf,0);
-  const totalWaste=totalStock-totalCutLen-totalKerf;
-  const wasteRate=totalWaste/totalStock*100;
+  // Summary
+  var totalBars  = bars.length;
+  var totalStock = totalBars*stockLen;
+  var totalDemand= expanded.reduce(function(s,p){return s+p.len;},0);
+  var totalKerf  = 0;
+  bars.forEach(function(b){ totalKerf += (b.cuts.length-1)*kerfM; });
+  var totalWaste = totalStock - totalDemand - totalKerf;
+  var wasteRate  = totalWaste/totalStock*100;
+  var minBars    = Math.ceil(totalDemand/stockLen);
 
-  let html=`<div class="summary-box">
-    <strong>原料支數：${totalBars} 支</strong>（每支 ${stockLen}m）<br>
-    需求總長：${totalCutLen.toFixed(2)} m｜鋸縫損耗：${(totalKerf*1000).toFixed(0)} mm<br>
-    廢料：<strong>${totalWaste.toFixed(3)} m（${wasteRate.toFixed(1)}%）</strong>
-  </div>`;
+  // Build result HTML
+  var html = '<div class="summary-box">' +
+    '<strong>原料根數</strong>：'+totalBars+' 根'+
+    '（理論最小下界：'+minBars+' 根）<br>' +
+    '<strong>總原料長度</strong>：'+totalStock.toFixed(2)+' m<br>' +
+    '<strong>總需求長度</strong>：'+totalDemand.toFixed(3)+' m<br>' +
+    '<strong>鋸縫損耗</strong>：'+totalKerf.toFixed(4)+' m（'+( parseFloat(document.getElementById('kerf').value) )+'mm × '+
+    bars.reduce(function(s,b){return s+Math.max(0,b.cuts.length-1);},0)+' 刀）<br>' +
+    '<strong>餘料（廢料）</strong>：'+totalWaste.toFixed(3)+' m<br>' +
+    '<strong>廢料率</strong>：'+wasteRate.toFixed(2)+'%' +
+    '</div>';
 
-  html+='<table><tr><th>支</th><th>切割配置</th><th>廢料(m)</th></tr>';
-  bars.forEach((bar,i)=>{
-    const waste=bar.remaining;
-    let vis='<div class="bar-vis">';
-    let pos=0;
-    bar.cuts.forEach(cut=>{
-      const w=(cut.len/stockLen*100).toFixed(2);
-      vis+=`<div class="bar-seg" style="left:${pos}%;width:${w}%;background:${cut.color}">${cut.len}m</div>`;
-      pos+=parseFloat(w);
+  bars.forEach(function(bar, bi){
+    var usedPct = (1-bar.remaining/stockLen)*100;
+    html += '<div class="bar-row">';
+    html += '<div class="bar-title">第 '+(bi+1)+' 根（'+stockLen+'m）— 使用率 '+usedPct.toFixed(1)+'%，餘料 '+bar.remaining.toFixed(3)+'m</div>';
+    html += '<div style="width:100%;background:#eee;border-radius:4px;overflow:hidden;display:flex;height:26px;align-items:center;">';
+    bar.cuts.forEach(function(cut,ci){
+      var w = (cut.len/stockLen*100).toFixed(2);
+      var c = COLORS[cut.type%COLORS.length];
+      html += '<div class="seg" style="width:'+w+'%;background:'+c+';min-width:2px" title="'+typeList[cut.type].label+'">'+cut.len+'m</div>';
+      if(ci<bar.cuts.length-1 && kerfM>0){
+        var kw = (kerfM/stockLen*100).toFixed(3);
+        html += '<div style="width:'+kw+'%;background:#f0a000;min-width:1px;height:26px" title="鋸縫"></div>';
+      }
     });
-    if(waste>0.001)vis+=`<div style="left:${pos}%;width:${(waste/stockLen*100).toFixed(2)}%;height:100%;position:absolute;background:#ddd"></div>`;
-    vis+='</div>';
-    html+=`<tr><td>#${i+1}</td><td>${vis}<span style="font-size:11px;color:#888">${bar.cuts.map(c=>c.len+'m').join(' + ')}</span></td><td>${waste.toFixed(3)}</td></tr>`;
+    if(bar.remaining>0.001){
+      var rw = (bar.remaining/stockLen*100).toFixed(2);
+      html += '<div class="seg waste-seg" style="width:'+rw+'%;background:#ddd;color:#888;min-width:2px" title="餘料">廢'+bar.remaining.toFixed(2)+'m</div>';
+    }
+    html += '</div>';
+    // cut list
+    html += '<div style="font-size:11.5px;color:#555;margin-top:5px">';
+    bar.cuts.forEach(function(cut,ci){
+      html += '<span style="display:inline-block;margin-right:8px;color:'+COLORS[cut.type%COLORS.length]+';font-weight:700">'+cut.len+'m</span>';
+    });
+    html += '</div></div>';
   });
-  html+='</table>';
-  document.getElementById('result').innerHTML=html;
 
-  // Process
-  let proc=`════════════════════════════════════════
-鋼筋算料最優化 計算過程
-演算法：First Fit Decreasing (FFD)
-════════════════════════════════════════
+  // --- Build process text ---
+  var proc = '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n' +
+    '  鋼筋切割最優化計算過程\n' +
+    '  演算法：FFD (First Fit Decreasing Bin Packing)\n' +
+    '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n' +
+    '【輸入參數】\n' +
+    '  定尺原料長度 L_stock = '+stockLen+' m\n' +
+    '  鋸縫損耗 kerf        = '+parseFloat(document.getElementById('kerf').value)+' mm = '+kerfM.toFixed(4)+' m\n\n' +
+    '【需求料段清單】\n' +
+    '  序號  長度(m)  數量  小計(m)\n' +
+    '  ─────────────────────────────\n';
 
-【一、輸入參數】
-  原料長度 = ${stockLen} m
-  鋸縫寬度 = ${kerf*1000} mm = ${kerf} m
-
-【二、需求清單】
-  規格         根數    小計長度
-  ─────────────────────────────\n`;
-  reqs.forEach(r=>{
-    proc+=`  ${r.l} m      × ${r.q}     = ${(r.l*r.q).toFixed(2)} m\n`;
+  typeList.forEach(function(t,i){
+    proc += '  '+String(i+1).padStart(4)+
+      '  '+t.len.toFixed(3).padStart(7)+
+      '  '+String(t.qty).padStart(4)+
+      '  '+(t.len*t.qty).toFixed(3).padStart(7)+'\n';
   });
-  proc+=`  ─────────────────────────────
-  合計片段數 = ${totalPieces} 片，需求總長 = ${totalCutLen.toFixed(3)} m
-  理論最少原料 = ⌈${totalCutLen.toFixed(3)} / ${stockLen}⌉ = ${Math.ceil(totalCutLen/stockLen)} 支
+  proc += '  ─────────────────────────────\n' +
+    '  合計需求 = '+totalDemand.toFixed(3)+' m，共 '+expanded.length+' 段\n\n';
 
-【三、FFD 演算法排序】
-  將所有片段由大到小排列：
-  ${pieces.map((p,i)=>`${i+1}.${p}m`).join('  ')}
-
-【四、逐片放置過程】
-${log.join('\n')}
-
-【五、各支鋼筋切料彙整】
-  支號  切割配置                          廢料(m)
-  ──────────────────────────────────────────\n`;
-  bars.forEach((bar,i)=>{
-    proc+=`  #${String(i+1).padEnd(4)} ${bar.cuts.map(c=>c.len+'m').join('+').padEnd(34)} ${bar.remaining.toFixed(4)}\n`;
+  proc += '【步驟一】依長度遞減排序（FFD 預處理）\n';
+  sorted.forEach(function(p,i){
+    proc += '  '+String(i+1).padStart(3)+'. '+p.len.toFixed(3)+' m（'+typeList[p.type].label+'）\n';
   });
-  proc+=`
-【六、統計結果】
-  使用原料支數 = ${totalBars} 支
-  原料總長     = ${totalBars} × ${stockLen} = ${totalStock.toFixed(1)} m
-  需求用料長   = ${totalCutLen.toFixed(3)} m
-  鋸縫損耗     = ${totalBars-1} 次開新料（各支內部鋸縫共 ${(totalKerf*1000).toFixed(0)} mm = ${totalKerf.toFixed(4)} m）
-  總廢料       = ${totalStock.toFixed(3)} - ${totalCutLen.toFixed(3)} - ${totalKerf.toFixed(4)} = ${totalWaste.toFixed(4)} m
-  廢料率       = ${totalWaste.toFixed(4)} / ${totalStock.toFixed(1)} × 100% = ${wasteRate.toFixed(2)}%
 
-  ※ FFD 為近似最優解，理論下界 = ${Math.ceil(totalCutLen/stockLen)} 支，實際用 ${totalBars} 支。
-  ※ 正式採購建議加計 3~5% 損耗餘量，即採購 ≥ ${Math.ceil(totalBars*1.05)} 支。`;
+  proc += '\n【步驟二】逐件放置（First Fit）\n' +
+    '  判斷邏輯：尋找第一根剩餘空間 ≥ (料段長 + 鋸縫) 的原料\n\n' +
+    placementLog.join('\n') + '\n\n';
 
-  document.getElementById('proc-text').textContent=proc;
-  document.getElementById('proc-box').style.display='';
+  proc += '【步驟三】各根原料切割明細\n';
+  bars.forEach(function(bar,bi){
+    proc += '  第 '+(bi+1)+' 根（'+stockLen+' m）：\n';
+    var pos = 0;
+    bar.cuts.forEach(function(cut,ci){
+      if(ci>0) pos += kerfM;
+      proc += '    切割 '+(ci+1)+'：'+cut.len.toFixed(3)+' m（'+typeList[cut.type].label+'），位置 '+pos.toFixed(3)+'～'+(pos+cut.len).toFixed(3)+' m\n';
+      pos += cut.len;
+    });
+    proc += '    餘料：'+bar.remaining.toFixed(4)+' m\n';
+  });
+
+  proc += '\n【步驟四】理論最優性驗證\n' +
+    '  總需求長度         = '+totalDemand.toFixed(3)+' m\n' +
+    '  理論最小根數下界   = ⌈'+totalDemand.toFixed(3)+' / '+stockLen+'⌉ = ⌈'+( totalDemand/stockLen ).toFixed(4)+'⌉ = '+minBars+' 根\n' +
+    '  FFD 實際用量       = '+totalBars+' 根\n' +
+    '  差距               = '+(totalBars-minBars)+' 根（'+((totalBars-minBars)===0?'達理論最優':'近似最優，可嘗試手動調整')+'）\n\n' +
+
+    '【步驟五】廢料分析\n' +
+    '  總原料             = '+totalBars+' × '+stockLen+' = '+totalStock.toFixed(2)+' m\n' +
+    '  總需求             = '+totalDemand.toFixed(3)+' m\n' +
+    '  鋸縫總損耗         = '+totalKerf.toFixed(4)+' m\n' +
+    '  廢料               = '+totalStock.toFixed(2)+' − '+totalDemand.toFixed(3)+' − '+totalKerf.toFixed(4)+' = '+totalWaste.toFixed(3)+' m\n' +
+    '  廢料率             = '+totalWaste.toFixed(3)+' / '+totalStock.toFixed(2)+' × 100% = '+wasteRate.toFixed(2)+'%\n\n' +
+    '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n' +
+    '  參考：Garey & Johnson (1979) Bin Packing Heuristics;\n' +
+    '        FFD 近似比 ≤ (11/9)·OPT + 6/9（de la Vega & Lueker 1981）\n' +
+    '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━';
+
+  document.getElementById('result').innerHTML = html;
+  document.getElementById('proc-text').textContent = proc;
+  document.getElementById('proc-box').style.display = '';
 }
-addRow(6.0,20);addRow(4.5,35);addRow(3.2,18);addRow(2.1,40);
+
+window.onload = optimize;
 </script>
 </body>
 </html>
