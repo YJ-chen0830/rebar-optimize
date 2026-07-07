@@ -64,6 +64,7 @@
     @page{margin:18mm 15mm;size:A4;}
   }
 </style>
+<script src="email-gate.js"></script>
 </head>
 <body>
 <header>
@@ -371,7 +372,7 @@ function getMonthlyCode(){
   for(var j=0;j<4;j++){code+=chars[tmp%chars.length];tmp=Math.floor(tmp/chars.length);}
   return code;
 }
-function openPro(){document.getElementById('proModal').style.display='flex';document.getElementById('code-input').value='';document.getElementById('code-msg').textContent='';}
+function openPro(){ JRH.checkEmail(function(){ window.print(); }); }
 function closePro(e){if(e.target===document.getElementById('proModal'))document.getElementById('proModal').style.display='none';}
 function verifyCode(){
   var entered=document.getElementById('code-input').value.trim().toUpperCase();
