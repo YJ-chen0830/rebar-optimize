@@ -52,6 +52,16 @@
   .code-row button{padding:8px 16px;border:none;border-radius:6px;background:var(--navy);color:#fff;font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap;width:auto;margin-top:0;}
   .print-header{display:none;align-items:center;justify-content:space-between;border-bottom:3px solid var(--navy);padding-bottom:12px;margin-bottom:18px;}
   .print-footer{display:none;margin-top:30px;border-top:1px solid #ccc;padding-top:10px;font-size:10px;color:#888;}
+  /* ── Mobile Tab System ── */
+  .mob-tabs{display:none;}
+  @media screen and (max-width:767px){
+    .mob-tabs{display:flex;background:var(--bg);border-bottom:2px solid var(--line);margin:0 -20px 12px;padding:0 20px;}
+    .mob-tab{flex:1;padding:11px 4px;text-align:center;font-size:13.5px;font-weight:700;color:#888;cursor:pointer;background:transparent;border:none;border-bottom:3px solid transparent;transition:color .15s,border-color .15s;}
+    .mob-tab.active{color:var(--navy);border-bottom-color:var(--gold);}
+    .grid{display:block;}
+    .grid>.card{display:none;}
+    .grid>.card.mob-active{display:block;}
+  }
   @media print{
     header,.no-print{display:none!important;}
     details.proc{display:block!important;margin-top:16px;border:1px solid #bbb;border-radius:6px;break-inside:avoid;}
@@ -297,8 +307,12 @@
   </table>
 </div>
 
+<div class="mob-tabs">
+  <button class="mob-tab active" onclick="switchMobTab('rb-in',this)">📋 輸入設定</button>
+  <button class="mob-tab" id="mobTab-rb-r" onclick="switchMobTab('rb-r',this)">📊 最優化結果</button>
+</div>
 <div class="grid">
-  <div class="card">
+  <div class="card mob-active" data-tab="rb-in">
     <h2>輸入設定</h2>
     <label>原料長度（定尺，m）</label>
     <input id="stock" type="number" value="12" step="0.5" min="1">
@@ -322,7 +336,7 @@
     </div>
   </div>
 
-  <div class="card">
+  <div class="card" data-tab="rb-r">
     <h2>最優化結果</h2>
     <div id="result"><p style="color:#888">尚未計算</p></div>
     <button class="pro-btn no-print" onclick="openPro()" id="pro-btn">📄 產出正式計算書 PDF</button>
@@ -534,9 +548,21 @@ function optimize(){
   document.getElementById('proc-box').style.display = '';
   document.getElementById('projSection').style.display = '';
   // pro-lock removed; pro-btn already visible
+  if(window.innerWidth<768){var b=document.getElementById('mobTab-rb-r');if(b)switchMobTab('rb-r',b);}
 }
 
 window.onload = optimize;
+
+// Domain lock
+(function(){var h=location.hostname;var ok=!h||h==='localhost'||h==='127.0.0.1'||h==='yj-chen0830.github.io';if(!ok){document.body.innerHTML='<div style="padding:60px 30px;text-align:center;font-family:sans-serif;"><h2 style="color:#0b1f3a;">⚠ 未授權使用</h2><p>本工具版權屬於 <strong>儒鴻結構技師事務所</strong>，<br>僅授權於 <a href="https://yj-chen0830.github.io">yj-chen0830.github.io</a> 使用。</p></div>';throw new Error('Unauthorized domain');}})();
+
+function switchMobTab(name,btn){
+  btn.parentElement.querySelectorAll('.mob-tab').forEach(function(t){t.classList.remove('active');});
+  btn.classList.add('active');
+  btn.parentElement.nextElementSibling.querySelectorAll('.card').forEach(function(c){
+    c.classList.toggle('mob-active',c.dataset.tab===name);
+  });
+}
 
 function getMonthlyCode(){
   var d=new Date();
