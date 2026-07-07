@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8">
@@ -53,7 +53,10 @@
   .print-header{display:none;align-items:center;justify-content:space-between;border-bottom:3px solid var(--navy);padding-bottom:12px;margin-bottom:18px;}
   .print-footer{display:none;margin-top:30px;border-top:1px solid #ccc;padding-top:10px;font-size:10px;color:#888;}
   @media print{
-    header,.no-print,details.proc{display:none!important;}
+    header,.no-print{display:none!important;}
+    details.proc{display:block!important;margin-top:16px;border:1px solid #bbb;border-radius:6px;break-inside:avoid;}
+    details.proc>summary{display:none!important;}
+    details.proc>pre{font-size:10px;line-height:1.75;white-space:pre-wrap;padding:12px 16px;color:#1a1a1a;font-family:"Courier New",monospace;}
     body{background:#fff;font-size:12px;}
     main{padding:0;max-width:100%;}
     .grid{grid-template-columns:1fr!important;}
@@ -323,7 +326,7 @@
     <h2>最優化結果</h2>
     <div id="result"><p style="color:#888">尚未計算</p></div>
     <button class="pro-btn no-print" onclick="openPro()" id="pro-btn">📄 產出正式計算書 PDF</button>
-    <details class="proc no-print" id="proc-box" style="display:none">
+    <details class="proc" id="proc-box" style="display:none">
       <summary>📋 計算過程（供第三方檢核）</summary>
       <pre id="proc-text"></pre>
     </details>
